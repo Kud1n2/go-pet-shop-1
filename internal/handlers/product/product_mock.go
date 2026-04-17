@@ -6,10 +6,11 @@ import (
 )
 
 type ProductsMock struct {
-	GetAllProductsFunc func(ctx context.Context) ([]models.Product, error)
-	CreateProductFunc  func(ctx context.Context, product models.Product) (int, error)
-	DeleteProductFunc  func(ctx context.Context, id int) error
-	UpdateProductFunc  func(ctx context.Context, product models.Product) error
+	GetAllProductsFunc  func(ctx context.Context) ([]models.Product, error)
+	CreateProductFunc   func(ctx context.Context, product models.Product) (int, error)
+	DeleteProductFunc   func(ctx context.Context, id int) error
+	UpdateProductFunc   func(ctx context.Context, product models.Product) error
+	GetProductsByIDFunc func(ctx context.Context, id int) (models.Product, error)
 }
 
 func (m *ProductsMock) GetAllProducts(ctx context.Context) ([]models.Product, error) {
@@ -38,4 +39,11 @@ func (m *ProductsMock) UpdateProduct(ctx context.Context, product models.Product
 		return m.UpdateProductFunc(ctx, product)
 	}
 	return nil
+}
+
+func (m *ProductsMock) GetProductsByID(ctx context.Context, id int) (models.Product, error) {
+	if m.GetProductsByIDFunc != nil {
+		return m.GetProductsByIDFunc(ctx, id)
+	}
+	return models.Product{}, nil
 }

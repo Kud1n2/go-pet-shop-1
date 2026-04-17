@@ -19,6 +19,7 @@ type Products interface {
 	CreateProduct(ctx context.Context, product models.Product) (int, error)
 	DeleteProduct(ctx context.Context, id int) error
 	UpdateProduct(ctx context.Context, product models.Product) error
+	GetProductsByID(ctx context.Context, id int) (models.Product, error)
 }
 
 type Handler struct {
@@ -325,4 +326,68 @@ func (h *Handler) UpdateProduct(w http.ResponseWriter, r *http.Request) {
 		"id":      id,
 		"product": product,
 	})
+}
+
+func (h *Handler) GetProductsByID(w http.ResponseWriter, r *http.Request) {
+	const fn = "handlers.product.GetProductsByID"
+
+	log := h.log.With(
+		slog.String("fn", fn),
+		slog.String("RequestId", middleware.GetReqID(r.Context())),
+	)
+
+	log.Info("Getting product by Id", slog.String("url", r.URL.String()))
+
+	idStr := chi.URLParam(r, "id")
+	if idStr == "" {
+		log.Error("Empty url id")
+		render.JSON(w, r, map[string]interface{}{
+			"error":   "Bad request",
+			"message": "Request must have ID",
+		})
+		return
+	}
+
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		log.Error("invalid id format", slog.Any("error", err), slog.String("id", idStr))
+		w.WriteHeader(http.StatusBadRequest)
+		render.JSON(w, r, map[string]string{
+			"error":   "Bad request",
+			"message": "Product ID must be a number",
+		})
+		return
+	}
+
+	var product models.Product
+
+	if product, err = h.storage.GetProductsByID(r.Context(), id); err != nil {
+		if strings.Contains(strings.ToLower(err.Error()), "not found") ||
+			strings.Contains(strings.ToLower(err.Error()), "no rows") ||
+			strings.Contains(strings.ToLower(err.Error()), "rows affected: 0") {
+			log.Warn("product not found", slog.Int("id", id))
+			w.WriteHeader(http.StatusNotFound)
+			render.JSON(w, r, map[string]interface{}{
+				"error":   "Not found",
+				"message": fmt.Sprintf("Product with ID %d does not exist", id),
+				"id":      id,
+			})
+			return
+		}
+
+		log.Error("failed to get product by id", slog.Any("error", err))
+		w.WriteHeader(http.StatusInternalServerError)
+		render.JSON(w, r, map[string]string{
+			"error":   "Internal server error",
+			"message": "Failed to get product by ID",
+		})
+		return
+	}
+
+	log.Info("Retrieved product successfully by ID",
+		slog.Int("id", id),
+		slog.String("url", r.URL.String()),
+	)
+
+	render.JSON(w, r, product)
 }
