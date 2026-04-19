@@ -69,6 +69,7 @@ func (h *Handler) GetUserByEmail(w http.ResponseWriter, r *http.Request) {
 	email := r.URL.String()[7:]
 	if email == "" {
 		log.Error("Empty url email")
+		w.WriteHeader(http.StatusBadRequest)
 		render.JSON(w, r, map[string]string{
 			"error":   "Bad request",
 			"message": "Request must have email",
@@ -93,6 +94,7 @@ func (h *Handler) GetUserByEmail(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		log.Error("Failed to get user by email", slog.Any("error", err))
+		w.WriteHeader(http.StatusInternalServerError)
 		render.JSON(w, r, map[string]string{
 			"error":   "Internal server error",
 			"message": "Failed to get user by email",
@@ -117,6 +119,7 @@ func (h *Handler) CreateUser(w http.ResponseWriter, r *http.Request) {
 
 	if err := render.DecodeJSON(r.Body, &user); err != nil {
 		log.Error("failed to decode request body", slog.Any("error", err))
+		w.WriteHeader(http.StatusBadRequest)
 		render.JSON(w, r, map[string]string{
 			"error":   "Bad request",
 			"message": "Failed to decode request body",
@@ -126,6 +129,7 @@ func (h *Handler) CreateUser(w http.ResponseWriter, r *http.Request) {
 
 	if user.Name == "" {
 		log.Error("user name is empty")
+		w.WriteHeader(http.StatusBadRequest)
 		render.JSON(w, r, map[string]string{
 			"error":   "Bad request",
 			"message": "user name is empty",
@@ -135,6 +139,7 @@ func (h *Handler) CreateUser(w http.ResponseWriter, r *http.Request) {
 
 	if user.Email == "" {
 		log.Error("user email is empty")
+		w.WriteHeader(http.StatusBadRequest)
 		render.JSON(w, r, map[string]string{
 			"error":   "Bad request",
 			"message": "user email is empty",
@@ -145,6 +150,7 @@ func (h *Handler) CreateUser(w http.ResponseWriter, r *http.Request) {
 	err := h.storage.CreateUser(r.Context(), user)
 	if err != nil {
 		log.Error("failed to create user")
+		w.WriteHeader(http.StatusInternalServerError)
 		render.JSON(w, r, map[string]string{
 			"error":   "Internal server error",
 			"message": "failed to create user",
