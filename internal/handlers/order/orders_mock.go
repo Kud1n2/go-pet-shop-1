@@ -11,6 +11,7 @@ type OrdersMock struct {
 	GetOrderByIDFunc           func(ctx context.Context, id int) (models.Order, error)
 	GetOrdersByUserEmailFunc   func(ctx context.Context, email string) ([]models.Order, error)
 	GetOrderItemsByOrderIDFunc func(ctx context.Context, orderID int) ([]models.OrderItem, error)
+	PlaceOrderFunc             func(ctx context.Context, userEmail string, items []models.OrderItem) (int, error)
 }
 
 func (m *OrdersMock) CreateOrder(ctx context.Context, order models.Order) (int, error) {
@@ -47,4 +48,11 @@ func (m *OrdersMock) GetOrderItemsByOrderID(ctx context.Context, orderID int) ([
 		return m.GetOrderItemsByOrderIDFunc(ctx, orderID)
 	}
 	return nil, nil
+}
+
+func (m *OrdersMock) PlaceOrder(ctx context.Context, userEmail string, items []models.OrderItem) (int, error) {
+	if m.PlaceOrderFunc != nil {
+		return m.PlaceOrderFunc(ctx, userEmail, items)
+	}
+	return 0, nil
 }

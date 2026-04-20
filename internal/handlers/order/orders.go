@@ -21,6 +21,7 @@ type Order interface {
 	GetOrderByID(ctx context.Context, id int) (models.Order, error)
 	GetOrdersByUserEmail(ctx context.Context, email string) ([]models.Order, error)
 	GetOrderItemsByOrderID(ctx context.Context, orderID int) ([]models.OrderItem, error)
+	PlaceOrder(ctx context.Context, userEmail string, items []models.OrderItem) (int, error)
 }
 
 type Handler struct {
@@ -293,4 +294,55 @@ func (h *Handler) GetOrderItemsByOrderID(w http.ResponseWriter, r *http.Request)
 	)
 
 	render.JSON(w, r, orders)
+}
+
+func (h *Handler) PlaceOrder(w http.ResponseWriter, r *http.Request) {
+	const fn = "internal.handlers.order.PlaceOrder"
+
+	log := h.log.With(
+		slog.String("fn", fn),
+		slog.String("request_id", middleware.GetReqID(r.Context())),
+	)
+
+	log.Info("Placing order", slog.String("url", r.URL.String()))
+
+	var order_item models.OrderItemsList
+
+	err := render.DecodeJSON(r.Body, &order_item)
+	if err != nil {
+		log.Error("failed to decode JSON body", slog.Any("error", err))
+		w.WriteHeader(http.StatusBadRequest)
+		render.JSON(w, r, map[string]string{
+			"error":   "Bad request",
+			"message": "Failed to decode JSON body",
+		})
+		return
+	}
+
+	if order_item.Email == "" {
+		log.Error("email is empty")
+		w.WriteHeader(http.StatusBadRequest)
+		render.JSON(w, r, map[string]string{
+			"error":   "Bad request",
+			"message": "Email can't be empty",
+		})
+		return
+	}
+
+	id, err := h.storage.PlaceOrder(r.Context(), order_item.Email, order_item.OrderItems)
+	if err != nil {
+		log.Error("Failed to place order", slog.Any("error", err))
+		w.WriteHeader(http.StatusInternalServerError)
+		render.JSON(w, r, map[string]string{
+			"error":   "Internal server error",
+			"message": "Failed to place order",
+		})
+		return
+	}
+
+	log.Info("Order placed successfully", slog.Int("id", id))
+	render.JSON(w, r, map[string]interface{}{
+		"status":   "Order placed successfully",
+		"order_id": id,
+	})
 }

@@ -290,3 +290,72 @@ func TestGetOrdersByUserEmail_Error(t *testing.T) {
 		t.Fatalf("expected 500, got %d", w.Code)
 	}
 }
+
+func TestPlaceOrder_Success(t *testing.T) {
+	mock := &OrdersMock{
+		PlaceOrderFunc: func(ctx context.Context, userEmail string, items []models.OrderItem) (int, error) {
+			return 1, nil
+		},
+	}
+
+	body := `{
+		"email":"example@email.net",
+		"orderItems":[{"productID":1,"quantity":3}]
+	}`
+
+	req := httptest.NewRequest(http.MethodPost, "/checkout", strings.NewReader(body))
+	w := httptest.NewRecorder()
+
+	handler := New(slog.Default(), mock)
+	handler.PlaceOrder(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", w.Code)
+	}
+}
+
+func TestPlaceOrder_BadRequest(t *testing.T) {
+	mock := &OrdersMock{
+		PlaceOrderFunc: func(ctx context.Context, userEmail string, items []models.OrderItem) (int, error) {
+			return 0, errors.New("Bad request")
+		},
+	}
+
+	body := `{
+		"email":"",
+		"orderItems":[{"productID":1,"quantity":3}]
+	}`
+
+	req := httptest.NewRequest(http.MethodPost, "/checkout", strings.NewReader(body))
+	w := httptest.NewRecorder()
+
+	handler := New(slog.Default(), mock)
+	handler.PlaceOrder(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400, got %d", w.Code)
+	}
+}
+
+func TestPlaceOrder_Error(t *testing.T) {
+	mock := &OrdersMock{
+		PlaceOrderFunc: func(ctx context.Context, userEmail string, items []models.OrderItem) (int, error) {
+			return 0, errors.New("DB error")
+		},
+	}
+
+	body := `{
+		"email":"example@email.com",
+		"orderItems":[{"productID":1,"quantity":3}]
+	}`
+
+	req := httptest.NewRequest(http.MethodPost, "/checkout", strings.NewReader(body))
+	w := httptest.NewRecorder()
+
+	handler := New(slog.Default(), mock)
+	handler.PlaceOrder(w, req)
+
+	if w.Code != http.StatusInternalServerError {
+		t.Fatalf("expected 500, got %d", w.Code)
+	}
+}

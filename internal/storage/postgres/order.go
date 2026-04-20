@@ -95,3 +95,56 @@ func (s *Storage) GetOrderItemsByOrderID(ctx context.Context, orderID int) ([]mo
 
 	return order_items, nil
 }
+
+func (s *Storage) PlaceOrder(ctx context.Context, userEmail string, items []models.OrderItem) (orderID int, err error) {
+	const fn = "storage.postgres.order.PlaceOrder"
+	//Begin transaction
+	tx, err := s.db.Begin(ctx)
+	if err != nil {
+		return 0, fmt.Errorf("%s:%w", fn, err)
+	}
+	//rollback
+	defer tx.Rollback(ctx)
+
+	var total_price int
+	//Проверяем и уменьшаем stock товаров
+	for _, orderItem := range items {
+		var price int
+		err = tx.QueryRow(ctx, `UPDATE products SET stock = stock - $1 WHERE id = $2 AND stock >= $1 RETURNING price`, orderItem.Quantity, orderItem.ProductID).Scan(&price)
+		if err != nil {
+			return 0, fmt.Errorf("%s:%w", fn, err)
+		}
+		total_price += orderItem.Quantity * price
+	}
+	//Получаем id пользователя
+	var id int
+	err = tx.QueryRow(ctx, `SELECT id FROM users WHERE email = $1`, userEmail).Scan(&id)
+	if err != nil {
+		return 0, fmt.Errorf("%s:%w", fn, err)
+	}
+	//Создаем order
+	var order_id int
+	err = tx.QueryRow(ctx, `INSERT INTO orders (user_id, total_price) VALUES ($1, $2) RETURNING id`, id, total_price).Scan(&order_id)
+	if err != nil {
+		return 0, fmt.Errorf("%s:%w", fn, err)
+	}
+
+	//Добавляем orderItems
+	for _, orderItem := range items {
+		_, err := tx.Exec(ctx, `INSERT INTO order_items (order_id, product_id, quantity) VALUES ($1,$2,$3)`, order_id, orderItem.ProductID, orderItem.Quantity)
+		if err != nil {
+			return 0, fmt.Errorf("%s:%w", fn, err)
+		}
+	}
+
+	//Добавляем transactions
+	_, err = tx.Exec(ctx, `INSERT INTO transactions(order_id, amount, status) VALUES ($1, $2, $3)`, order_id, len(items), "Completed")
+	if err != nil {
+		return 0, fmt.Errorf("%s:%w", fn, err)
+	}
+
+	if err = tx.Commit(ctx); err != nil {
+		return 0, fmt.Errorf("%s:%w", fn, err)
+	}
+	return order_id, nil
+}

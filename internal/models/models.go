@@ -28,3 +28,8 @@ type OrderItem struct {
 	ProductID int
 	Quantity  int
 }
+
+type OrderItemsList struct {
+	Email      string
+	OrderItems []OrderItem
+}
