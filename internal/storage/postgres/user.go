@@ -54,3 +54,37 @@ func (s *Storage) CreateUser(ctx context.Context, user models.Customer) error {
 	}
 	return nil
 }
+
+func (s *Storage) GetUserOrderHistory(ctx context.Context, email string) ([]models.OrderDetail, error) {
+	const fn = "storage.postgres.users.GetUserOrderHistory"
+
+	var orderDetails []models.OrderDetail
+
+	orders, err := s.GetOrdersByUserEmail(ctx, email)
+	if err != nil {
+		return nil, fmt.Errorf("%s:%w:%s", fn, err, "getOrdersByUserEmail")
+	}
+
+	for _, order := range orders {
+		var order_detail models.OrderDetail
+		order_detail.Order = order
+
+		order_items, err := s.GetOrderItemsByOrderID(ctx, order.ID)
+		if err != nil {
+			return nil, fmt.Errorf("%s:%w:%s", fn, err, "getOrderItemsByOrderID")
+		}
+
+		order_detail.OrderItems = order_items
+
+		var status string
+		err = s.db.QueryRow(ctx, `SELECT status FROM transactions WHERE order_id = $1`, order.ID).Scan(&status)
+		if err != nil {
+			return nil, fmt.Errorf("%s:%w:%s", fn, err, "query row")
+		}
+		order_detail.TransactionStatus = status
+
+		orderDetails = append(orderDetails, order_detail)
+	}
+
+	return orderDetails, nil
+}

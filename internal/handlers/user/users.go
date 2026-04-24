@@ -16,6 +16,7 @@ type Customer interface {
 	CreateUser(ctx context.Context, user models.Customer) error
 	GetUserByEmail(ctx context.Context, email string) (models.Customer, error)
 	GetAllUsers(ctx context.Context) ([]models.Customer, error)
+	GetUserOrderHistory(ctx context.Context, email string) ([]models.OrderDetail, error)
 }
 
 type Handler struct {
@@ -168,4 +169,52 @@ func (h *Handler) CreateUser(w http.ResponseWriter, r *http.Request) {
 		"name":   user.Name,
 		"email":  user.Email,
 	})
+}
+
+func (h *Handler) GetUserOrderHistory(w http.ResponseWriter, r *http.Request) {
+	const fn = "internal.handlers.users.GetUserOrderHistory"
+
+	log := h.log.With(
+		slog.String("fn", fn),
+		slog.String("request_id", middleware.GetReqID(r.Context())),
+	)
+
+	email := r.URL.Query().Get("email")
+
+	if email == "" {
+		log.Error("Email can't be empty")
+		w.WriteHeader(http.StatusBadRequest)
+		render.JSON(w, r, map[string]string{
+			"error":   "Bad request",
+			"message": "Empty email",
+		})
+		return
+	}
+
+	orderDetails, err := h.storage.GetUserOrderHistory(r.Context(), email)
+	if err != nil {
+		if strings.Contains(strings.ToLower(err.Error()), "not found") ||
+			strings.Contains(strings.ToLower(err.Error()), "no rows") ||
+			strings.Contains(strings.ToLower(err.Error()), "rows affected: 0") {
+			log.Warn("product not found", slog.String("email", email))
+			w.WriteHeader(http.StatusNotFound)
+			render.JSON(w, r, map[string]interface{}{
+				"error":   "Not found",
+				"message": fmt.Sprintf("User with email %s does not exist", email),
+				"email":   email,
+			})
+			return
+		}
+		log.Error("failed to get user's order history", slog.Any("errors", err))
+		w.WriteHeader(http.StatusInternalServerError)
+		render.JSON(w, r, map[string]string{
+			"error":   "Internal server error",
+			"message": "Failed to get user's order history",
+		})
+		return
+	}
+
+	log.Info("Got user's order history successfully.")
+
+	render.JSON(w, r, orderDetails)
 }

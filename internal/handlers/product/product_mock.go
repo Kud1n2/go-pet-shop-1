@@ -6,11 +6,12 @@ import (
 )
 
 type ProductsMock struct {
-	GetAllProductsFunc  func(ctx context.Context) ([]models.Product, error)
-	CreateProductFunc   func(ctx context.Context, product models.Product) (int, error)
-	DeleteProductFunc   func(ctx context.Context, id int) error
-	UpdateProductFunc   func(ctx context.Context, product models.Product) error
-	GetProductsByIDFunc func(ctx context.Context, id int) (models.Product, error)
+	GetAllProductsFunc    func(ctx context.Context) ([]models.Product, error)
+	CreateProductFunc     func(ctx context.Context, product models.Product) (int, error)
+	DeleteProductFunc     func(ctx context.Context, id int) error
+	UpdateProductFunc     func(ctx context.Context, product models.Product) error
+	GetProductsByIDFunc   func(ctx context.Context, id int) (models.Product, error)
+	GetPopularProductFunc func(ctx context.Context) ([]models.PopularProduct, error)
 }
 
 func (m *ProductsMock) GetAllProducts(ctx context.Context) ([]models.Product, error) {
@@ -46,4 +47,11 @@ func (m *ProductsMock) GetProductsByID(ctx context.Context, id int) (models.Prod
 		return m.GetProductsByIDFunc(ctx, id)
 	}
 	return models.Product{}, nil
+}
+
+func (m *ProductsMock) GetPopularProducts(ctx context.Context) ([]models.PopularProduct, error) {
+	if m.GetPopularProductFunc != nil {
+		return m.GetPopularProductFunc(ctx)
+	}
+	return []models.PopularProduct{}, nil
 }

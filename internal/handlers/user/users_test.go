@@ -190,3 +190,57 @@ func TestGetAllUsers_Error(t *testing.T) {
 		t.Fatalf("expected 500, got %d", w.Code)
 	}
 }
+
+func TestGetUserOrderHistory_Success(t *testing.T) {
+	mock := &UsersMock{
+		GetUserOrderHistoryFunc: func(ctx context.Context, email string) ([]models.OrderDetail, error) {
+			return []models.OrderDetail{}, nil
+		},
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/users/history?email=example@email.com", nil)
+	w := httptest.NewRecorder()
+
+	handler := New(slog.Default(), mock)
+	handler.GetUserOrderHistory(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", w.Code)
+	}
+}
+
+func TestGetUserOrderHistory_BadRequest(t *testing.T) {
+	mock := &UsersMock{
+		GetUserOrderHistoryFunc: func(ctx context.Context, email string) ([]models.OrderDetail, error) {
+			return nil, errors.New("Bad request")
+		},
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/users/history?email=", nil)
+	w := httptest.NewRecorder()
+
+	handler := New(slog.Default(), mock)
+	handler.GetUserOrderHistory(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400, got %d", w.Code)
+	}
+}
+
+func TestGetUserOrderHistory_Error(t *testing.T) {
+	mock := &UsersMock{
+		GetUserOrderHistoryFunc: func(ctx context.Context, email string) ([]models.OrderDetail, error) {
+			return nil, errors.New("DB error")
+		},
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/users/history?email=example@email.com", nil)
+	w := httptest.NewRecorder()
+
+	handler := New(slog.Default(), mock)
+	handler.GetUserOrderHistory(w, req)
+
+	if w.Code != http.StatusInternalServerError {
+		t.Fatalf("expected 500, got %d", w.Code)
+	}
+}

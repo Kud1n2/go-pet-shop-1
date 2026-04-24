@@ -20,6 +20,7 @@ type Products interface {
 	DeleteProduct(ctx context.Context, id int) error
 	UpdateProduct(ctx context.Context, product models.Product) error
 	GetProductsByID(ctx context.Context, id int) (models.Product, error)
+	GetPopularProducts(ctx context.Context) ([]models.PopularProduct, error)
 }
 
 type Handler struct {
@@ -390,4 +391,27 @@ func (h *Handler) GetProductsByID(w http.ResponseWriter, r *http.Request) {
 	)
 
 	render.JSON(w, r, product)
+}
+
+func (h *Handler) GetPopularProducts(w http.ResponseWriter, r *http.Request) {
+	const fn = "internal.handlers.product.GetPopularProduct"
+
+	log := h.log.With(
+		slog.String("fn", fn),
+		slog.String("id", middleware.GetReqID(r.Context())),
+	)
+
+	popularProducts, err := h.storage.GetPopularProducts(r.Context())
+	if err != nil {
+		log.Error("Failed to get popular products", slog.Any("errors", err))
+		w.WriteHeader(http.StatusInternalServerError)
+		render.JSON(w, r, map[string]string{
+			"error":   "Internal server error",
+			"message": "Failed to get popular products",
+		})
+	}
+
+	log.Info("Got popular products successfully.")
+
+	render.JSON(w, r, popularProducts)
 }

@@ -371,3 +371,37 @@ func TestGetProductByID_Fail(t *testing.T) {
 		t.Fatalf("expected 500, got %d", w.Code)
 	}
 }
+
+func TestGetPopularProducts_Success(t *testing.T) {
+	mock := &ProductsMock{
+		GetPopularProductFunc: func(ctx context.Context) ([]models.PopularProduct, error) {
+			return []models.PopularProduct{}, nil
+		},
+	}
+	req := httptest.NewRequest(http.MethodGet, "/products/popular", nil)
+	w := httptest.NewRecorder()
+
+	handler := New(slog.Default(), mock)
+	handler.GetPopularProducts(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", w.Code)
+	}
+}
+
+func TestGetPopularProducts_Error(t *testing.T) {
+	mock := &ProductsMock{
+		GetPopularProductFunc: func(ctx context.Context) ([]models.PopularProduct, error) {
+			return nil, errors.New("DB error")
+		},
+	}
+	req := httptest.NewRequest(http.MethodGet, "/products/popular", nil)
+	w := httptest.NewRecorder()
+
+	handler := New(slog.Default(), mock)
+	handler.GetPopularProducts(w, req)
+
+	if w.Code != http.StatusInternalServerError {
+		t.Fatalf("expected 500, got %d", w.Code)
+	}
+}

@@ -33,3 +33,14 @@ type OrderItemsList struct {
 	Email      string
 	OrderItems []OrderItem
 }
+
+type OrderDetail struct {
+	Order
+	OrderItems        []OrderItem
+	TransactionStatus string
+}
+
+type PopularProduct struct {
+	Product
+	Quantity int
+}

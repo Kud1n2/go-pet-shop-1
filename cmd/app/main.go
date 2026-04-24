@@ -60,11 +60,13 @@ func main() {
 	router.Delete("/products/{id}", productHandler.DeleteProduct)
 	router.Put("/products/{id}", productHandler.UpdateProduct)
 	router.Get("/products/{id}", productHandler.GetProductsByID)
+	router.Get("/products/popular", productHandler.GetPopularProducts)
 
 	usersHandler := user.New(log, storage)
 	router.Get("/users", usersHandler.GetAllUsers)
 	router.Get("/users/{email:.+}", usersHandler.GetUserByEmail)
 	router.Post("/users", usersHandler.CreateUser)
+	router.Get("/users/history", usersHandler.GetUserOrderHistory)
 
 	ordersHandlers := order.New(log, storage)
 	router.Post("/orders", ordersHandlers.CreateOrder)

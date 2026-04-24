@@ -6,9 +6,10 @@ import (
 )
 
 type UsersMock struct {
-	CreateUserFunc     func(ctx context.Context, user models.Customer) error
-	GetUserByEmailFunc func(ctx context.Context, email string) (models.Customer, error)
-	GetAllUsersFunc    func(ctx context.Context) ([]models.Customer, error)
+	CreateUserFunc          func(ctx context.Context, user models.Customer) error
+	GetUserByEmailFunc      func(ctx context.Context, email string) (models.Customer, error)
+	GetAllUsersFunc         func(ctx context.Context) ([]models.Customer, error)
+	GetUserOrderHistoryFunc func(ctx context.Context, email string) ([]models.OrderDetail, error)
 }
 
 func (m *UsersMock) CreateUser(ctx context.Context, user models.Customer) error {
@@ -28,6 +29,13 @@ func (m *UsersMock) GetUserByEmail(ctx context.Context, email string) (models.Cu
 func (m *UsersMock) GetAllUsers(ctx context.Context) ([]models.Customer, error) {
 	if m.GetAllUsersFunc != nil {
 		return m.GetAllUsersFunc(ctx)
+	}
+	return nil, nil
+}
+
+func (m *UsersMock) GetUserOrderHistory(ctx context.Context, email string) ([]models.OrderDetail, error) {
+	if m.GetUserOrderHistoryFunc != nil {
+		return m.GetUserOrderHistoryFunc(ctx, email)
 	}
 	return nil, nil
 }
