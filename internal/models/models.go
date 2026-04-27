@@ -34,10 +34,17 @@ type OrderItemsList struct {
 	OrderItems []OrderItem
 }
 
+type OrderDetailItems struct {
+	ProductName string
+	Quantity    int
+}
+
 type OrderDetail struct {
-	Order
-	OrderItems        []OrderItem
+	OrderID           int
+	TotalPrice        int
+	CreatedAt         time.Time
 	TransactionStatus string
+	Items             []OrderDetailItems
 }
 
 type PopularProduct struct {

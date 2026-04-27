@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"go-pet-shop/internal/models"
+	"time"
 )
 
 func (s *Storage) GetAllUsers(ctx context.Context) ([]models.Customer, error) {
@@ -60,31 +61,47 @@ func (s *Storage) GetUserOrderHistory(ctx context.Context, email string) ([]mode
 
 	var orderDetails []models.OrderDetail
 
-	orders, err := s.GetOrdersByUserEmail(ctx, email)
+	rows, err := s.db.Query(ctx, `select o.id, o.total_price, o.created_at, p.name, oi.quantity, t.status  from order_items oi
+								join orders o on o.id = oi.order_id
+								join transactions t on o.id = t.order_id
+								join users u ON o.user_id = u.id 
+								join products p on oi.product_id = p.id
+								WHERE u.email = $1`, email)
 	if err != nil {
-		return nil, fmt.Errorf("%s:%w:%s", fn, err, "getOrdersByUserEmail")
+		return nil, fmt.Errorf("%s: %w", fn, err)
 	}
+	defer rows.Close()
 
-	for _, order := range orders {
-		var order_detail models.OrderDetail
-		order_detail.Order = order
+	OrderDetailsMap := make(map[int]*models.OrderDetail)
 
-		order_items, err := s.GetOrderItemsByOrderID(ctx, order.ID)
-		if err != nil {
-			return nil, fmt.Errorf("%s:%w:%s", fn, err, "getOrderItemsByOrderID")
+	for rows.Next() {
+		var (
+			OrderID           int
+			TotalPrice        int
+			CreatedAt         time.Time
+			TransactionStatus string
+			Items             models.OrderDetailItems
+		)
+		if err = rows.Scan(&OrderID, &TotalPrice, &CreatedAt, &Items.ProductName, &Items.Quantity, &TransactionStatus); err != nil {
+			return nil, fmt.Errorf("%s: %w", fn, err)
 		}
-
-		order_detail.OrderItems = order_items
-
-		var status string
-		err = s.db.QueryRow(ctx, `SELECT status FROM transactions WHERE order_id = $1`, order.ID).Scan(&status)
-		if err != nil {
-			return nil, fmt.Errorf("%s:%w:%s", fn, err, "query row")
+		order, ok := OrderDetailsMap[OrderID]
+		if !ok {
+			order = &models.OrderDetail{
+				OrderID:           OrderID,
+				TotalPrice:        TotalPrice,
+				CreatedAt:         CreatedAt,
+				TransactionStatus: TransactionStatus,
+			}
+			OrderDetailsMap[OrderID] = order
 		}
-		order_detail.TransactionStatus = status
-
-		orderDetails = append(orderDetails, order_detail)
+		order.Items = append(order.Items, Items)
 	}
-
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("%s: %w", fn, err)
+	}
+	for _, value := range OrderDetailsMap {
+		orderDetails = append(orderDetails, *value)
+	}
 	return orderDetails, nil
 }
