@@ -138,7 +138,7 @@ func (s *Storage) PlaceOrder(ctx context.Context, userEmail string, items []mode
 	}
 
 	//Добавляем transactions
-	_, err = tx.Exec(ctx, `INSERT INTO transactions(order_id, amount, status) VALUES ($1, $2, $3)`, order_id, len(items), "Completed")
+	_, err = tx.Exec(ctx, `INSERT INTO transactions(order_id, amount, status) VALUES ($1, $2, $3)`, order_id, total_price, "Completed")
 	if err != nil {
 		return 0, fmt.Errorf("%s:%w", fn, err)
 	}
